@@ -46,6 +46,16 @@ pytest -v
 
 ---
 
+## Run metrics
+
+Run app performance check:
+
+```bash
+python metrics.py
+```
+
+---
+
 ## Project structure
 
 - app/ - core logic (crypto, blockchain, services)
