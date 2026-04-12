@@ -1,6 +1,7 @@
 import argparse
 import os
 from dotenv import load_dotenv
+
 from app.blockchain.chain import SimpleBlockchain
 from app.services.certificate_service import CertificateService
 
@@ -28,9 +29,12 @@ def main():
     service = CertificateService(blockchain, private_key, public_key)
 
     if args.command == "issue":
-        service.issue(args.file)
+        result = service.issue(args.file)
+        print(result["status"], result["file_hash"])
+
     elif args.command == "verify":
-        service.verify(args.file)
+        result = service.verify(args.file)
+        print(result["status"], result.get("reason"))
 
 
 if __name__ == "__main__":

@@ -1,7 +1,9 @@
 import base64
 import time
+
 from app.crypto.hash_utils import calculate_hash
 from app.crypto.signature import sign_data, verify_signature
+
 
 class CertificateService:
     def __init__(self, blockchain, private_key, public_key):
@@ -18,32 +20,52 @@ class CertificateService:
             "signature": base64.b64encode(signature).decode(),
             "status": "valid",
             "issued_at": time.time(),
-            "expires_at": time.time() + 60 * 60 * 24  # 1 day
+            "expires_at": time.time() + 60 * 60 * 24
         }
 
         self.blockchain.add_record(record)
-        print("Certificate issued")
+
+        return {
+            "status": "ISSUED",
+            "file_hash": file_hash
+        }
 
     def verify(self, file_path: str):
         file_hash = calculate_hash(file_path)
         record = self.blockchain.find_by_hash(file_hash)
 
         if not record:
-            print("INVALID: Not found")
-            return
+            return {
+                "status": "INVALID",
+                "reason": "NOT_FOUND",
+                "file_hash": file_hash
+            }
 
         signature = base64.b64decode(record["signature"])
 
         if not verify_signature(self.public_key, signature, file_hash.encode()):
-            print("INVALID: Signature")
-            return
+            return {
+                "status": "INVALID",
+                "reason": "BAD_SIGNATURE",
+                "file_hash": file_hash
+            }
 
         if record["status"] != "valid":
-            print("INVALID: Revoked")
-            return
+            return {
+                "status": "INVALID",
+                "reason": "REVOKED",
+                "file_hash": file_hash
+            }
 
         if time.time() > record["expires_at"]:
-            print("INVALID: Expired")
-            return
+            return {
+                "status": "INVALID",
+                "reason": "EXPIRED",
+                "file_hash": file_hash
+            }
 
-        print("VALID")
+        return {
+            "status": "VALID",
+            "reason": "OK",
+            "file_hash": file_hash
+        }
