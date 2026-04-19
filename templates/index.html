@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Blockchain Certificate System</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="container">
+    <h1>Blockchain Certificate System</h1>
+
+    <div class="card">
+        <h2>Issue Certificate</h2>
+        <input type="file" id="issueFile">
+        <button onclick="issueFile()">Issue</button>
+    </div>
+
+    <div class="card">
+        <h2>Verify Certificate</h2>
+        <input type="file" id="verifyFile">
+        <button onclick="verifyFile()">Verify</button>
+    </div>
+
+    <div class="card result">
+        <h2>Result</h2>
+        <pre id="result">No actions yet...</pre>
+    </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

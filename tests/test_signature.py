@@ -7,33 +7,33 @@ def generate_keys():
     private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     public_key = private_key.public_key()
 
-    private_bytes = private_key.private_bytes(
+    priv_pem = private_key.private_bytes(
         encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.TraditionalOpenSSL,
+        format=serialization.PrivateFormat.PKCS8,
         encryption_algorithm=serialization.NoEncryption()
     )
 
-    public_bytes = public_key.public_bytes(
+    pub_pem = public_key.public_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PublicFormat.SubjectPublicKeyInfo
     )
 
-    return private_bytes, public_bytes
+    return priv_pem, pub_pem
 
 
 def test_signature_valid():
-    private_key, public_key = generate_keys()
+    priv, pub = generate_keys()
 
-    data = b"test-data"
-    signature = sign_data(private_key, data)
+    msg = "test-data"
 
-    assert verify_signature(public_key, signature, data)
+    sig = sign_data(priv, msg)
+    assert verify_signature(pub, msg, sig) is True
 
 
-def test_signature_invalid_data():
-    private_key, public_key = generate_keys()
+def test_signature_invalid():
+    priv, pub = generate_keys()
 
-    data = b"test-data"
-    signature = sign_data(private_key, data)
+    msg = "test-data"
+    sig = sign_data(priv, msg)
 
-    assert not verify_signature(public_key, signature, b"other-data")
+    assert verify_signature(pub, "wrong-data", sig) is False

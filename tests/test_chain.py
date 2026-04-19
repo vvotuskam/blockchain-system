@@ -1,33 +1,24 @@
+import tempfile
 from app.blockchain.chain import SimpleBlockchain
 
 
-def test_add_and_find_record(tmp_path):
-    path = tmp_path / "chain.json"
+def test_block_addition():
+    file = tempfile.NamedTemporaryFile(delete=False)
 
-    bc = SimpleBlockchain(str(path))
+    bc = SimpleBlockchain(file.name)
 
-    record = {
-        "hash": "abc123",
-        "signature": "sig",
-        "status": "valid"
-    }
+    bc.add_block({"file_hash": "abc"})
+    bc.add_block({"file_hash": "def"})
 
-    bc.add_record(record)
-
-    result = bc.find_by_hash("abc123")
-
-    assert result is not None
-    assert result["hash"] == "abc123"
+    assert len(bc.get_chain()) == 2
 
 
-def test_chain_persistence(tmp_path):
-    path = tmp_path / "chain.json"
+def test_chain_persistence():
+    file = tempfile.NamedTemporaryFile(delete=False)
 
-    bc = SimpleBlockchain(str(path))
+    bc1 = SimpleBlockchain(file.name)
+    bc1.add_block({"file_hash": "abc"})
 
-    bc.add_record({"hash": "x1"})
+    bc2 = SimpleBlockchain(file.name)
 
-    bc2 = SimpleBlockchain(str(path))
-    result = bc2.find_by_hash("x1")
-
-    assert result is not None
+    assert len(bc2.get_chain()) == 1

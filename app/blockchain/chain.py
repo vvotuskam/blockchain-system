@@ -1,31 +1,35 @@
 import json
 import os
-from datetime import datetime
+
 
 class SimpleBlockchain:
-    def __init__(self, path: str):
+    def __init__(self, path):
         self.path = path
+        self.chain = self._load()
+
+    def _load(self):
         if not os.path.exists(self.path):
-            with open(self.path, 'w') as f:
-                json.dump([], f)
+            return []
 
-    def load(self):
-        with open(self.path, 'r') as f:
-            return json.load(f)
+        try:
+            with open(self.path, "r") as f:
+                content = f.read().strip()
 
-    def save(self, data):
-        with open(self.path, 'w') as f:
-            json.dump(data, f, indent=2)
+                if not content:
+                    return []
 
-    def add_record(self, record: dict):
-        chain = self.load()
-        record["timestamp"] = datetime.utcnow().isoformat()
-        chain.append(record)
-        self.save(chain)
+                return json.loads(content)
 
-    def find_by_hash(self, file_hash: str):
-        chain = self.load()
-        for record in chain:
-            if record["hash"] == file_hash:
-                return record
-        return None
+        except json.JSONDecodeError:
+            return []
+
+    def save(self):
+        with open(self.path, "w") as f:
+            json.dump(self.chain, f, indent=2)
+
+    def add_block(self, block):
+        self.chain.append(block)
+        self.save()
+
+    def get_chain(self):
+        return self.chain

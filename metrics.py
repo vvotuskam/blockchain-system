@@ -1,145 +1,101 @@
-import os
 import time
-import shutil
+import requests
 import matplotlib.pyplot as plt
+import tempfile
+import os
+import shutil
 
-from app.blockchain.chain import SimpleBlockchain
-from app.services.certificate_service import CertificateService
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives import serialization
-
-
-# -----------------------------
-# KEY GENERATION
-# -----------------------------
-def generate_keys():
-    private_key = rsa.generate_private_key(
-        public_exponent=65537,
-        key_size=2048
-    )
-
-    public_key = private_key.public_key()
-
-    private_bytes = private_key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.TraditionalOpenSSL,
-        encryption_algorithm=serialization.NoEncryption()
-    )
-
-    public_bytes = public_key.public_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo
-    )
-
-    return private_bytes, public_bytes
+NODES = [
+    "http://127.0.0.1:8000",
+    "http://127.0.0.1:8001",
+    "http://127.0.0.1:8002",
+]
 
 
-# -----------------------------
-# FILE GENERATOR
-# -----------------------------
-def generate_file(size_mb: int, base_dir="tmp_metrics"):
-    os.makedirs(base_dir, exist_ok=True)
-
-    file_path = os.path.join(base_dir, f"heavy_{size_mb}mb.txt")
-
-    if os.path.exists(file_path):
-        return file_path
-
-    print(f"Generating file: {file_path}")
-
-    data = "BLOCKCHAIN_STRESS_TEST_LINE\n" * 1000
-    chunks = (size_mb * 1024) // 30
-
-    with open(file_path, "w") as f:
-        for _ in range(chunks):
-            f.write(data)
-
-    return file_path
+def create_file(size_kb: int):
+    f = tempfile.NamedTemporaryFile(delete=False)
+    f.write(os.urandom(size_kb * 1024))
+    f.close()
+    return f.name
 
 
-# -----------------------------
-# CLEANUP
-# -----------------------------
-def cleanup_tmp(base_dir="tmp_metrics"):
-    if os.path.exists(base_dir):
-        shutil.rmtree(base_dir)
-        print(f"Cleaned up {base_dir}/")
+def issue_file(node, file_path):
+    with open(file_path, "rb") as f:
+        files = {"file": f}
+        start = time.time()
+        requests.post(f"{node}/issue", files=files)
+        return time.time() - start
 
 
-# -----------------------------
-# STRESS TEST
-# -----------------------------
-def run_stress_test(sizes_mb):
-    chain_file = "chain.json"
+def verify_file(node, file_path):
+    with open(file_path, "rb") as f:
+        files = {"file": f}
+        start = time.time()
+        requests.post(f"{node}/verify", files=files)
+        return time.time() - start
 
-    bc = SimpleBlockchain(chain_file)
 
-    private_key, public_key = generate_keys()
-
-    service = CertificateService(
-        blockchain=bc,
-        private_key=private_key,
-        public_key=public_key
-    )
-
+def run_stress_test():
+    sizes = [1, 100, 1024, 1024 * 10, 1024 * 20, 1024 * 50, 1024 * 100, 1024 * 200, 1024 * 500, 1024 * 1000]  # KB
     issue_times = []
     verify_times = []
 
-    try:
-        for size in sizes_mb:
-            file_path = generate_file(size)
+    for size in sizes:
+        file_path = create_file(size)
 
-            # ISSUE
-            start = time.time()
-            service.issue(file_path)
-            issue_time = time.time() - start
+        node = NODES[0]
 
-            # VERIFY (avg)
-            verify_runs = []
-            for _ in range(5):
-                start = time.time()
-                service.verify(file_path)
-                verify_runs.append(time.time() - start)
+        it = issue_file(node, file_path)
+        vt = verify_file(node, file_path)
 
-            avg_verify = sum(verify_runs) / len(verify_runs)
+        issue_times.append(it)
+        verify_times.append(vt)
 
-            issue_times.append(issue_time)
-            verify_times.append(avg_verify)
+        os.remove(file_path)
 
-            print(f"{size}MB -> issue: {issue_time:.4f}s | verify: {avg_verify:.4f}s")
+        print(f"Size={size}KB | issue={it:.3f}s | verify={vt:.3f}s")
 
-    finally:
-        # ALWAYS CLEANUP (even if crash happens)
-        cleanup_tmp()
+    return sizes, issue_times, verify_times
 
-    return issue_times, verify_times
+def format_size(kb):
+    if kb >= 1024 * 1024:
+        return f"{kb / (1024 * 1024):.2f} GB"
+    elif kb >= 1024:
+        return f"{kb / 1024:.2f} MB"
+    else:
+        return f"{kb:.0f} KB"
 
 
-# -----------------------------
-# PLOT
-# -----------------------------
 def plot(sizes, issue_times, verify_times):
-    plt.figure()
+    labels = [format_size(s) for s in sizes]
 
-    plt.plot(sizes, issue_times, marker="o", label="ISSUE time")
-    plt.plot(sizes, verify_times, marker="o", label="VERIFY time")
+    plt.figure(figsize=(10, 6))
 
-    plt.xlabel("File size (MB)")
-    plt.ylabel("Time (seconds)")
-    plt.title("Blockchain Stress Test (Size vs Latency)")
+    plt.plot(labels, issue_times, marker="o", label="Issue time")
+    plt.plot(labels, verify_times, marker="o", label="Verify time")
 
-    plt.grid(True)
+    plt.xlabel("File size")
+    plt.ylabel("Time (s)")
+    plt.title("Blockchain Network Performance (Multi-node)")
+
+    plt.xticks(rotation=45)
+    plt.grid(True, alpha=0.3)
     plt.legend()
 
+    plt.tight_layout()
     plt.show()
 
+def cleanup_uploads():
+    uploads_dir = "uploads"
 
-# -----------------------------
-# MAIN
-# -----------------------------
+    if os.path.exists(uploads_dir):
+        shutil.rmtree(uploads_dir)
+        print("uploads/ cleaned after metrics run")
+
+
 if __name__ == "__main__":
-    sizes_mb = [1, 5, 10, 20, 50]
-
-    issue_times, verify_times = run_stress_test(sizes_mb)
-
-    plot(sizes_mb, issue_times, verify_times)
+    try:
+        sizes, issue_t, verify_t = run_stress_test()
+        plot(sizes, issue_t, verify_t)
+    finally:
+        cleanup_uploads()

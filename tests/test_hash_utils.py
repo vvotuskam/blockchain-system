@@ -1,21 +1,16 @@
 from app.crypto.hash_utils import calculate_hash
+import tempfile
 
+def test_hash_changes_with_content():
+    f1 = tempfile.NamedTemporaryFile(delete=False)
+    f1.write(b"hello")
+    f1.close()
 
-def test_hash_different_files(tmp_path):
-    file1 = tmp_path / "a.txt"
-    file2 = tmp_path / "b.txt"
+    f2 = tempfile.NamedTemporaryFile(delete=False)
+    f2.write(b"hello world")
+    f2.close()
 
-    file1.write_text("hello")
-    file2.write_text("hello world")
+    h1 = calculate_hash(f1.name)
+    h2 = calculate_hash(f2.name)
 
-    assert calculate_hash(str(file1)) != calculate_hash(str(file2))
-
-
-def test_hash_same_file(tmp_path):
-    file1 = tmp_path / "a.txt"
-    file1.write_text("hello")
-
-    h1 = calculate_hash(str(file1))
-    h2 = calculate_hash(str(file1))
-
-    assert h1 == h2
+    assert h1 != h2

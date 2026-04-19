@@ -1,54 +1,114 @@
-# Blockchain Certificate Verification
-This project is a simplified blockchain-based certificate verification system.
-It stores only hashes and metadata on-chain, while original documents are stored off-chain.
+# Blockchain for Aviation Certificate Verification
+
+This project is a prototype system that demonstrates the use of **blockchain technology for secure verification of aviation personnel qualification documents** in a **distributed multi-node environment**.
+
+The system implements a decentralized blockchain where each node maintains its own copy of the chain and participates in **consensus-based verification** of documents.
+
+Only **cryptographic hashes and metadata** are stored on-chain. Original documents are processed **in-memory and remain off-chain**, following industry security standards.
 
 ---
 
-## Run project
+## Architecture Overview
 
-The project can be started using a single script:
+The system simulates a **multi-node blockchain network**:
 
-```bash
-chmod +x ./scripts/run.sh
-./scripts/run.sh
-```
-
-This script will:
-- install dependencies
-- generate RSA keys
-- initialize blockchain storage
-- create test files
-- run issue and verify flows
+- Each node runs independently (port-based separation)
+- Each node has its own local `chain.<port>.json`
+- Nodes communicate via REST API
+- Verification uses **quorum voting**
+- Responses are protected using **digital signatures**
 
 ---
 
-## Run manually
+## Domain Context (Aviation)
 
-Issue certificate:
-```bash
-python main.py issue files/valid.pdf
-```
+The system simulates verification of critical aviation documents:
 
-Verify certificate:
+- Pilot licenses
+- Medical certificates
+- Training center diplomas
+- Flight permissions and operational qualifications
+
+These documents are essential for **flight safety** and are regulated by:
+
+- ICAO (International Civil Aviation Organization)
+- EASA (European Union Aviation Safety Agency)
+
+---
+
+## Purpose of the System
+
+The project demonstrates how blockchain can improve aviation document management by:
+
+- preventing document forgery
+- ensuring data integrity and immutability
+- enabling multi-party verification (airlines, regulators, training centers)
+- providing transparent audit trails of issued certificates
+- eliminating single point of trust
+
+---
+
+## How It Works
+
+### 1. Issue certificate
+- file is processed in memory
+- SHA-256 hash is generated
+- hash is signed by issuer
+- block is stored locally and broadcast to peers
+
+---
+
+### 2. Verify certificate
+- hash is recomputed
+- local node verifies against blockchain
+- other nodes are queried (`verify_block`)
+- responses are signed and validated
+- final decision is based on **majority vote (quorum)**
+
+---
+
+### 3. Tampering detection
+- any modification of file content
+- → hash mismatch
+- → system returns `INVALID`
+
+---
+
+## Run (IMPORTANT)
+
+You MUST start the entire distributed system using:
+
 ```bash
-python main.py verify files/valid.pdf
+chmod +x ./scripts/run_nodes.sh
+./scripts/run_nodes.sh
 ```
 
 ---
 
-## Run tests
+## Performance Metrics
 
-Run all tests using pytest:
+The system includes a performance benchmarking module that evaluates the behavior of the distributed blockchain network under different file sizes and load conditions.
+
+Metrics measure:
+
+* certificate issuance time
+* certificate verification time
+* network overhead in multi-node mode
+* system scalability under increasing data size
+
+The benchmark generates synthetic test files (up to large sizes including hundreds of MB / GB-scale payloads) and evaluates end-to-end processing latency across the running blockchain nodes.
+
+### Run requirements
+
+Before executing metrics, the full blockchain network must be started:
 
 ```bash
-pytest -v
+./scripts/run_nodes.sh
 ```
 
----
+All nodes must be fully running and synchronized before starting the benchmark.
 
-## Run metrics
-
-Run app performance check:
+Then run:
 
 ```bash
 python metrics.py
@@ -56,17 +116,20 @@ python metrics.py
 
 ---
 
-## Project structure
+### Output
 
-- app/ - core logic (crypto, blockchain, services)
-- tests/ - unit tests
-- chain.json - local blockchain storage
-- run.sh - automatic project run script
+After execution, the system generates a visualization of performance results.
+Example output:
+
+![Blockchain Performance Metrics](static/metrics.png)
 
 ---
 
-## Notes
+### Notes
 
-- Only hashes and metadata are stored in blockchain
-- Documents are stored off-chain
-- Keys are generated locally for testing purposes
+* Metrics are computed in a multi-node environment
+* Results depend on network communication between nodes
+* File sizes are automatically normalized (KB / MB / GB) for readability
+* The benchmark is intended for evaluation of system scalability and distributed processing overhead
+
+---

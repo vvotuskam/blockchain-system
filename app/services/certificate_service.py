@@ -1,8 +1,6 @@
-import base64
 import time
-
 from app.crypto.hash_utils import calculate_hash
-from app.crypto.signature import sign_data, verify_signature
+from app.crypto.signature import sign_data
 
 
 class CertificateService:
@@ -11,61 +9,46 @@ class CertificateService:
         self.private_key = private_key
         self.public_key = public_key
 
-    def issue(self, file_path: str):
+    def issue(self, file_path):
         file_hash = calculate_hash(file_path)
-        signature = sign_data(self.private_key, file_hash.encode())
 
-        record = {
-            "hash": file_hash,
-            "signature": base64.b64encode(signature).decode(),
-            "status": "valid",
-            "issued_at": time.time(),
-            "expires_at": time.time() + 60 * 60 * 24
+        issue_ts = int(time.time())
+        expire_ts = issue_ts + 60 * 2  # 2 min
+
+        signature = sign_data(self.private_key, file_hash)
+
+        block = {
+            "file_hash": file_hash,
+            "status": "VALID",
+            "issue_timestamp": issue_ts,
+            "expire_timestamp": expire_ts,
+            "signature": signature
         }
 
-        self.blockchain.add_record(record)
+        self.blockchain.add_block(block)
 
         return {
             "status": "ISSUED",
-            "file_hash": file_hash
+            "hash": file_hash,
+            "block": block
         }
 
-    def verify(self, file_path: str):
+    def verify(self, file_path):
         file_hash = calculate_hash(file_path)
-        record = self.blockchain.find_by_hash(file_hash)
+        now = int(time.time())
 
-        if not record:
-            return {
-                "status": "INVALID",
-                "reason": "NOT_FOUND",
-                "file_hash": file_hash
-            }
+        for block in self.blockchain.get_chain():
+            if block["file_hash"] == file_hash:
 
-        signature = base64.b64decode(record["signature"])
+                if now > block["expire_timestamp"]:
+                    return {
+                        "status": "EXPIRED"
+                    }
 
-        if not verify_signature(self.public_key, signature, file_hash.encode()):
-            return {
-                "status": "INVALID",
-                "reason": "BAD_SIGNATURE",
-                "file_hash": file_hash
-            }
-
-        if record["status"] != "valid":
-            return {
-                "status": "INVALID",
-                "reason": "REVOKED",
-                "file_hash": file_hash
-            }
-
-        if time.time() > record["expires_at"]:
-            return {
-                "status": "INVALID",
-                "reason": "EXPIRED",
-                "file_hash": file_hash
-            }
+                return {
+                    "status": "VALID"
+                }
 
         return {
-            "status": "VALID",
-            "reason": "OK",
-            "file_hash": file_hash
+            "status": "INVALID"
         }

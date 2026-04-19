@@ -17,6 +17,9 @@ keys/
 *.pem
 
 # Blockchain data
+chain.8000.json
+chain.8001.json
+chain.8002.json
 chain.json
 
 # Logs
@@ -34,3 +37,5 @@ Thumbs.db
 *.tar
 
 tmp_metrics
+
+uploads
